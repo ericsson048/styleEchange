@@ -1,0 +1,52 @@
+{
+  "placeholderImages": [
+    {
+      "id": "fashion-1",
+      "description": "Vintage denim jacket",
+      "imageUrl": "https://picsum.photos/seed/fashion1/600/800",
+      "imageHint": "vintage jacket"
+    },
+    {
+      "id": "fashion-2",
+      "description": "Leather boots",
+      "imageUrl": "https://picsum.photos/seed/fashion2/600/800",
+      "imageHint": "leather boots"
+    },
+    {
+      "id": "fashion-3",
+      "description": "Silk summer dress",
+      "imageUrl": "https://picsum.photos/seed/fashion3/600/800",
+      "imageHint": "silk dress"
+    },
+    {
+      "id": "fashion-4",
+      "description": "Classic trench coat",
+      "imageUrl": "https://picsum.photos/seed/fashion4/600/800",
+      "imageHint": "trench coat"
+    },
+    {
+      "id": "fashion-5",
+      "description": "Knitted wool sweater",
+      "imageUrl": "https://picsum.photos/seed/fashion5/600/800",
+      "imageHint": "wool sweater"
+    },
+    {
+      "id": "fashion-6",
+      "description": "Modern sneakers",
+      "imageUrl": "https://picsum.photos/seed/fashion6/600/800",
+      "imageHint": "sneakers"
+    },
+    {
+      "id": "user-1",
+      "description": "User profile avatar 1",
+      "imageUrl": "https://picsum.photos/seed/user1/100/100",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "user-2",
+      "description": "User profile avatar 2",
+      "imageUrl": "https://picsum.photos/seed/user2/100/100",
+      "imageHint": "person portrait"
+    }
+  ]
+}
