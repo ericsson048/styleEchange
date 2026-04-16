@@ -359,19 +359,19 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 h-[calc(100vh-80px)]">
+    <div className="container mx-auto px-4 py-4 md:py-8" style={{ height: "calc(100vh - 72px)" }}>
       <div className="grid grid-cols-1 md:grid-cols-12 gap-0 border rounded-2xl overflow-hidden bg-card h-full shadow-lg">
 
         {/* Thread list */}
-        <div className="md:col-span-4 lg:col-span-3 border-r flex flex-col">
-          <div className="p-4 border-b">
+        <div className="md:col-span-4 lg:col-span-3 border-r flex flex-col min-h-0">
+          <div className="p-4 border-b shrink-0">
             <h1 className="text-xl font-bold mb-3 font-headline">Messages</h1>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Rechercher..." className="pl-9 bg-muted/50 border-none" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
             {filteredThreads.map((chat) => {
               const realIdx = threads.findIndex((t) => t.id === chat.id);
               return (
@@ -403,9 +403,9 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
 
         {/* Chat area */}
         {currentThread ? (
-          <div className="md:col-span-8 lg:col-span-9 flex flex-col bg-muted/20">
+          <div className="md:col-span-8 lg:col-span-9 flex flex-col bg-muted/20 min-h-0">
             {/* Header */}
-            <div className="p-4 bg-card border-b flex items-center justify-between">
+            <div className="p-4 bg-card border-b flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full overflow-hidden bg-muted">
                   <img src={currentThread.summary.avatar} alt={currentThread.summary.name} className="object-cover w-full h-full" />
@@ -423,8 +423,8 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
+            {/* Messages — zone scrollable */}
+            <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent p-4 space-y-3 min-h-0">
               {currentThread.messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
@@ -433,7 +433,7 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
 
             {/* Preview image */}
             {imagePreview && (
-              <div className="px-4 pt-3 bg-card border-t">
+              <div className="px-4 pt-3 bg-card border-t shrink-0">
                 <div className="relative inline-block">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={imagePreview} alt="Preview" className="h-24 w-24 object-cover rounded-xl border" />
@@ -449,7 +449,7 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
 
             {/* Preview audio */}
             {audioPreviewUrl && (
-              <div className="px-4 pt-3 bg-card border-t flex items-center gap-3">
+              <div className="px-4 pt-3 bg-card border-t flex items-center gap-3 shrink-0">
                 <audio src={audioPreviewUrl} controls className="h-8 flex-1" />
                 <Button size="sm" onClick={sendAudio} disabled={sending} className="bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer shrink-0">
                   {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Envoyer"}
@@ -461,9 +461,8 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
             )}
 
             {/* Input bar */}
-            <div className="p-4 bg-card border-t">
+            <div className="p-4 bg-card border-t shrink-0">
               {recording ? (
-                /* Barre d'enregistrement */
                 <div className="flex items-center gap-3 bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-2.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse shrink-0" />
                   <span className="text-sm font-medium text-destructive flex-1">Enregistrement… {fmtSec(recordingSeconds)}</span>
@@ -474,15 +473,12 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  {/* Bouton image */}
                   <Button variant="ghost" size="icon" className="text-muted-foreground shrink-0 cursor-pointer"
                     onClick={() => imageInputRef.current?.click()}>
                     <ImageIcon className="h-5 w-5" />
                   </Button>
                   <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = ""; }} />
-
-                  {/* Champ texte */}
                   <Input
                     ref={inputRef}
                     placeholder="Écrivez votre message..."
@@ -492,14 +488,10 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendText(); } }}
                     disabled={sending}
                   />
-
-                  {/* Bouton micro */}
                   <Button variant="ghost" size="icon" className="text-muted-foreground shrink-0 cursor-pointer"
                     onClick={startRecording} disabled={sending}>
                     <Mic className="h-5 w-5" />
                   </Button>
-
-                  {/* Bouton envoyer */}
                   <Button onClick={sendText} disabled={!text.trim() || sending}
                     className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full w-10 h-10 p-0 shrink-0 cursor-pointer">
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
