@@ -141,7 +141,7 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentThread?.messages.length]);
 
-  // Polling
+  // Polling — merge les nouveaux messages sans écraser les médias déjà affichés
   const pollMessages = useCallback(async () => {
     if (!currentThread) return;
     try {
@@ -150,20 +150,48 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
       const data = await res.json();
       const msgs: any[] = data.messages;
       const otherOnline: boolean = data.otherOnline ?? false;
+
       setThreads((prev) =>
-        prev.map((t, i) =>
-          i !== activeIdx ? t : {
-            ...t,
-            summary: { ...t.summary, lastMsg: msgs[msgs.length - 1]?.text || (msgs[msgs.length - 1]?.mediaType === "image" ? "📷 Image" : msgs[msgs.length - 1]?.mediaType === "audio" ? "🎤 Audio" : t.summary.lastMsg), unread: 0, online: otherOnline },
-            messages: msgs.map((m) => ({
-              id: m.id, text: m.text, mediaUrl: m.mediaUrl, mediaType: m.mediaType,
+        prev.map((t, i) => {
+          if (i !== activeIdx) return t;
+
+          // Construire un map des messages existants par id
+          const existingById = new Map(t.messages.map((m) => [m.id, m]));
+
+          const merged: ChatMessage[] = msgs.map((m) => {
+            const existing = existingById.get(m.id);
+            return {
+              id: m.id,
+              text: m.text ?? "",
+              // Priorité : données du serveur (source de vérité)
+              mediaUrl: m.mediaUrl ?? existing?.mediaUrl ?? null,
+              mediaType: m.mediaType ?? existing?.mediaType ?? null,
               sender: m.senderId === meId ? ("me" as const) : ("them" as const),
-              senderName: m.senderName, senderAvatar: m.senderAvatar,
+              senderName: m.senderName,
+              senderAvatar: m.senderAvatar,
               time: new Date(m.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
               createdAt: m.createdAt,
-            })),
-          }
-        )
+            };
+          });
+
+          // Garder les messages temporaires (tempId) qui ne sont pas encore en DB
+          const tempMessages = t.messages.filter(
+            (m) => m.id.startsWith("temp-") && !msgs.find((s) => s.id === m.id)
+          );
+
+          const lastMsg = msgs[msgs.length - 1];
+          const lastMsgText = lastMsg?.mediaType === "image"
+            ? "📷 Image"
+            : lastMsg?.mediaType === "audio"
+            ? "🎤 Audio"
+            : lastMsg?.text || t.summary.lastMsg;
+
+          return {
+            ...t,
+            summary: { ...t.summary, lastMsg: lastMsgText, unread: 0, online: otherOnline },
+            messages: [...merged, ...tempMessages],
+          };
+        })
       );
     } catch {}
   }, [currentThread, activeIdx, meId]);
@@ -193,7 +221,10 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
       createdAt: now,
     };
 
-    setThreads((prev) => prev.map((t, i) => i !== activeIdx ? t : { ...t, messages: [...t.messages, preview] }));
+    // Ajout optimiste immédiat
+    setThreads((prev) => prev.map((t, i) =>
+      i !== activeIdx ? t : { ...t, messages: [...t.messages, preview] }
+    ));
 
     try {
       const res = await fetch("/api/messages/send", {
@@ -201,13 +232,38 @@ export function MessagesPageClient({ threads: initialThreads, meId }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ threadId: currentThread.id, ...payload }),
       });
+
       if (!res.ok) {
         const d = await res.json();
         toast({ title: "Erreur", description: d.error, variant: "destructive" });
-        setThreads((prev) => prev.map((t, i) => i !== activeIdx ? t : { ...t, messages: t.messages.filter((m) => m.id !== tempId) }));
+        // Rollback
+        setThreads((prev) => prev.map((t, i) =>
+          i !== activeIdx ? t : { ...t, messages: t.messages.filter((m) => m.id !== tempId) }
+        ));
+        return;
       }
+
+      // Remplacer le message temporaire par la vraie réponse de l'API
+      const saved = await res.json();
+      setThreads((prev) => prev.map((t, i) =>
+        i !== activeIdx ? t : {
+          ...t,
+          messages: t.messages.map((m) =>
+            m.id === tempId ? {
+              ...m,
+              id: saved.id,
+              text: saved.text ?? "",
+              mediaUrl: saved.mediaUrl ?? null,
+              mediaType: saved.mediaType ?? null,
+            } : m
+          ),
+        }
+      ));
     } catch {
-      setThreads((prev) => prev.map((t, i) => i !== activeIdx ? t : { ...t, messages: t.messages.filter((m) => m.id !== tempId) }));
+      // Rollback
+      setThreads((prev) => prev.map((t, i) =>
+        i !== activeIdx ? t : { ...t, messages: t.messages.filter((m) => m.id !== tempId) }
+      ));
     } finally {
       setSending(false);
       inputRef.current?.focus();
