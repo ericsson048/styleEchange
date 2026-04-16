@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum ReportReason {
+  FAKE
+  INAPPROPRIATE
+  SPAM
+  COUNTERFEIT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+enum NotificationType {
+  NEW_MESSAGE
+  NEW_ORDER       // vendeur : quelqu'un a acheté ton article
+  ORDER_STATUS    // acheteur : statut de commande mis à jour
+  NEW_REVIEW      // vendeur : nouvel avis reçu
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  username      String    @unique
+  name          String
+  avatarUrl     String?
+  location      String?
+  rating        Float?
+  reviewsCount  Int?      @default(0)
+  role          Role      @default(USER)
+  password      String?
+  lastSeenAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  products        Product[]       @relation("ProductOwner")
+  threads1        MessageThread[] @relation("ThreadsBuyer")
+  threads2        MessageThread[] @relation("ThreadsSeller")
+  messages        Message[]
+  favorites       Favorite[]
+  orders          Order[]         @relation("OrderBuyer")
+  sales           Order[]         @relation("OrderSeller")
+  accounts        Account[]
+  sessions        Session[]
+  reviewsGiven    Review[]        @relation("ReviewAuthor")
+  reviewsReceived Review[]        @relation("ReviewTarget")
+  reports         Report[]        @relation("ReportAuthor")
+  notifications   Notification[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id          String  @id
+  title       String
+  description String?
+  brand       String?
+  size        String?
+  price       Decimal @db.Decimal(10, 2)
+  category    String?
+  condition   String?
+  color       String?
+  location    String?
+  isActive    Boolean @default(true)
+
+  imageUrl  String?
+  imageUrls String[] @default([])
+
+  ownerId String
+  owner   User   @relation("ProductOwner", fields: [ownerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  favorites Favorite[]
+  threads   MessageThread[]
+  orders    Order[]
+  reports   Report[]
+}
+
+model MessageThread {
+  id            String   @id @default(cuid())
+  buyerId       String
+  sellerId      String
+  productId     String?
+  isOnline      Boolean  @default(false)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  buyer   User     @relation("ThreadsBuyer", fields: [buyerId], references: [id])
+  seller  User     @relation("ThreadsSeller", fields: [sellerId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  messages Message[]
+
+  @@unique([buyerId, sellerId, productId])
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  threadId  String
+  senderId  String
+  text      String      @default("")
+  mediaUrl  String?     // base64 data URL ou URL externe
+  mediaType String?     // "image" | "audio"
+  isRead    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  thread MessageThread @relation(fields: [threadId], references: [id])
+  sender User          @relation(fields: [senderId], references: [id])
+
+  @@index([threadId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  buyerId         String
+  sellerId        String?
+  productId       String
+  status          OrderStatus @default(PENDING)
+  amount          Decimal     @db.Decimal(10, 2)
+  protectionFee   Decimal     @db.Decimal(10, 2)
+  shippingFee     Decimal     @db.Decimal(10, 2)
+  shippingMethod  String?
+  shippingAddress Json?
+  stripePaymentId String?
+  stripeSessionId String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  buyer   User    @relation("OrderBuyer", fields: [buyerId], references: [id])
+  seller  User?   @relation("OrderSeller", fields: [sellerId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([productId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  authorId  String
+  targetId  String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  authorUser User @relation("ReviewAuthor", fields: [authorId], references: [id])
+  targetUser User @relation("ReviewTarget", fields: [targetId], references: [id])
+
+  @@unique([authorId, targetId])
+  @@index([targetId])
+}
+
+model Report {
+  id        String       @id @default(cuid())
+  authorId  String
+  productId String
+  reason    ReportReason
+  details   String?
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  author  User    @relation("ReportAuthor", fields: [authorId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([authorId, productId])
+  @@index([productId])
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}

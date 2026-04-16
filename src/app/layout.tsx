@@ -2,10 +2,12 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from '@/components/ui/toaster';
+import { SessionProvider } from '@/components/layout/SessionProvider';
+import { CurrencyProvider } from '@/components/ui/currency-selector';
 
 export const metadata: Metadata = {
-  title: 'StyleÉchange - Votre vide-dressing mode & durable',
-  description: 'Découvrez et vendez des articles de mode uniques sur StyleÉchange.',
+  title: 'StyleÉchange — Marché de mode au Burundi',
+  description: 'Achetez et vendez des articles de mode au Burundi sur StyleÉchange.',
 };
 
 export default function RootLayout({
@@ -21,11 +23,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased selection:bg-accent/30 min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 bg-background">
-          {children}
-        </main>
-        <Toaster />
+        <SessionProvider>
+          <CurrencyProvider>
+            <Navbar />
+            <main className="flex-1 bg-background">
+              {children}
+            </main>
+            <Toaster />
+          </CurrencyProvider>
+        </SessionProvider>
       </body>
     </html>
   );
