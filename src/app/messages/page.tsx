@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MessagesPageClient } from "@/components/messages/MessagesPageClient";
@@ -25,9 +26,10 @@ export default async function MessagesPage() {
   });
 
   return (
-    <MessagesPageClient
-      meId={meId}
-      threads={threads.map((thread) => {
+    <Suspense fallback={<div className="container mx-auto px-4 py-8 h-[calc(100vh-80px)] bg-muted/20 rounded-2xl animate-pulse" />}>
+      <MessagesPageClient
+        meId={meId}
+        threads={threads.map((thread) => {
         const other = thread.buyerId === meId ? thread.seller : thread.buyer;
         const last = thread.messages[thread.messages.length - 1];
         const unread = thread.messages.filter(
@@ -57,5 +59,6 @@ export default async function MessagesPage() {
         };
       })}
     />
+    </Suspense>
   );
 }

@@ -1,0 +1,9 @@
+.env
+.env.local
+.env.*.local
+prisma/seed.js
+CREDENTIALS.md
+.agents/
+.kiro/
+.zencoder/
+.zenflow/
