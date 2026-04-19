@@ -39,19 +39,39 @@ export async function POST(req: NextRequest) {
         data: {
           status: "PAID",
           stripePaymentId: session.payment_intent as string,
-          // Renseigner le sellerId si pas encore fait
+          threeDSecure: session.payment_method_options?.card?.request_three_d_secure !== "any" ? false : true,
           sellerId: order?.product.ownerId ?? undefined,
         },
       });
 
-      // Notifier le vendeur
-      if (order?.product.ownerId) {
+      // Créer le reversement vendeur automatiquement
+      if (order && order.product.ownerId) {
+        const gross = Number(order.amount);
+        const platformFee = Math.round(gross * 0.05 * 100) / 100;
+        const shipping = Number(order.shippingFee);
+        const net = gross - platformFee;
+
+        await prisma.sellerPayout.upsert({
+          where: { orderId },
+          create: {
+            sellerId: order.product.ownerId,
+            orderId,
+            productId: order.productId,
+            grossAmount: gross,
+            platformFee,
+            shippingFee: shipping,
+            netAmount: net,
+            status: "PENDING",
+          },
+          update: {},
+        });
+
         const { createNotification } = await import("@/lib/notifications");
         await createNotification({
           userId: order.product.ownerId,
           type: "NEW_ORDER",
           title: "Nouvelle vente !",
-          body: `Votre article "${order.product.title}" a été acheté.`,
+          body: `Votre article "${order.product.title}" a été acheté. Reversement en attente : ${net.toLocaleString("fr-BI")} BIF.`,
           link: `/profile?tab=sales`,
         });
       }

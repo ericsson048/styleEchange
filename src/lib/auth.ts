@@ -38,6 +38,7 @@ const credentialsProvider = Credentials({
       image: user.avatarUrl,
       role: user.role,
       username: user.username,
+      isBanned: user.isBanned,
     };
   },
 });

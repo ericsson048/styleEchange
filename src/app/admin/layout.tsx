@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Users, Package, ShoppingBag, BarChart3, LogOut, Flag } from "lucide-react";
+import { LayoutDashboard, Users, Package, ShoppingBag, BarChart3, LogOut, Flag, Tag, AlertTriangle, UserX, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 
@@ -9,8 +9,12 @@ const navItems = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
   { href: "/admin/products", label: "Produits", icon: Package },
+  { href: "/admin/categories", label: "Catégories", icon: Tag },
   { href: "/admin/orders", label: "Commandes", icon: ShoppingBag },
+  { href: "/admin/payouts", label: "Reversements", icon: Wallet },
   { href: "/admin/reports", label: "Signalements", icon: Flag },
+  { href: "/admin/sanctions", label: "Sanctions", icon: AlertTriangle },
+  { href: "/admin/bans", label: "Bannissements", icon: UserX },
   { href: "/admin/stats", label: "Statistiques", icon: BarChart3 },
 ];
 
@@ -21,7 +25,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/");
   }
 
-  const pendingReports = await prisma.report.count({ where: { status: "PENDING" } });
+  const [pendingReports, pendingPayouts] = await Promise.all([
+    prisma.report.count({ where: { status: "PENDING" } }),
+    prisma.sellerPayout.count({ where: { status: "PENDING" } }),
+  ]);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -51,6 +58,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 {item.href === "/admin/reports" && pendingReports > 0 && (
                   <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                     {pendingReports}
+                  </span>
+                )}
+                {item.href === "/admin/payouts" && pendingPayouts > 0 && (
+                  <span className="ml-auto bg-orange-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                    {pendingPayouts}
                   </span>
                 )}
               </Button>

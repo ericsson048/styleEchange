@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/components/ui/currency-selector";
@@ -11,21 +13,56 @@ import { useCurrency } from "@/components/ui/currency-selector";
 interface ProductCardProps {
   id: string;
   title: string;
-  price: number; // stocké en BIF
+  price: number;
   size: string;
   brand: string;
   imageUrl: string;
   userImage?: string;
   userName?: string;
+  isFavorited?: boolean;
   isLoading?: boolean;
 }
 
 export function ProductCard({
-  id, title, price, size, brand, imageUrl, userImage, userName, isLoading = false,
+  id, title, price, size, brand, imageUrl,
+  userImage, userName, isFavorited = false, isLoading = false,
 }: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [favorited, setFavorited] = useState(isFavorited);
+  const [favLoading, setFavLoading] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const { format } = useCurrency();
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!session) {
+      router.push(`/auth/login?callbackUrl=/product/${id}`);
+      return;
+    }
+
+    setFavLoading(true);
+    const next = !favorited;
+    setFavorited(next); // optimistic
+
+    try {
+      if (next) {
+        await fetch("/api/favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId: id }),
+        });
+      } else {
+        await fetch(`/api/favorites?productId=${id}`, { method: "DELETE" });
+      }
+    } catch {
+      setFavorited(!next); // rollback
+    } finally {
+      setFavLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -73,15 +110,20 @@ export function ProductCard({
             onLoad={() => setIsImageLoaded(true)}
           />
         )}
+
         <div className="absolute top-3 right-3 z-20">
           <button
-            onClick={(e) => { e.preventDefault(); setIsFavorite(!isFavorite); }}
+            onClick={toggleFavorite}
+            disabled={favLoading}
             className={cn(
               "p-2 rounded-full transition-all active:scale-90 shadow-sm cursor-pointer",
-              isFavorite ? "bg-red-50 text-red-500" : "bg-white/80 backdrop-blur-sm text-primary hover:bg-white"
+              favorited
+                ? "bg-red-50 text-red-500"
+                : "bg-white/80 backdrop-blur-sm text-primary hover:bg-white"
             )}
+            aria-label={favorited ? "Retirer des favoris" : "Ajouter aux favoris"}
           >
-            <Heart className={cn("h-5 w-5 transition-colors", isFavorite && "fill-current")} />
+            <Heart className={cn("h-5 w-5 transition-all", favorited && "fill-current", favLoading && "opacity-50")} />
           </button>
         </div>
       </Link>

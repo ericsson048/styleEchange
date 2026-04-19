@@ -5,6 +5,7 @@ export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
     include: {
+      category: { select: { name: true } },
       owner: { select: { name: true, email: true } },
       _count: { select: { favorites: true, reports: true } },
     },
@@ -21,7 +22,7 @@ export default async function AdminProductsPage() {
           id: p.id,
           title: p.title,
           price: Number(p.price),
-          category: p.category,
+          category: p.category?.name ?? p.categoryLegacy ?? null,
           condition: p.condition,
           imageUrl: p.imageUrl,
           ownerName: p.owner.name,

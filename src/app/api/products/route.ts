@@ -38,6 +38,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { title, category, description, brand, condition, size, price, location, images } = parsed.data;
+  const normalizedCategory = category.trim();
+  const categorySlug = normalizedCategory
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-");
 
   // Image principale : première image uploadée ou placeholder
   const imgSeed = Math.random().toString(36).slice(2, 8);
@@ -47,11 +53,23 @@ export async function POST(req: NextRequest) {
   const imageUrls = images && images.length > 0 ? images : [];
 
   try {
+    const matchedCategory = await prisma.category.findFirst({
+      where: {
+        OR: [
+          { id: normalizedCategory },
+          { slug: categorySlug },
+          { name: { equals: normalizedCategory, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true },
+    });
+
     const product = await prisma.product.create({
       data: {
         id: crypto.randomUUID(),
         title,
-        category,
+        categoryId: matchedCategory?.id ?? null,
+        categoryLegacy: matchedCategory?.name ?? normalizedCategory,
         description: description || null,
         brand: brand || null,
         condition: condition || null,

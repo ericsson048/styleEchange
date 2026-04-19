@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession, signOut } from "next-auth/react";
 import { CurrencySelector } from "@/components/ui/currency-selector";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { CartBadge } from "@/components/layout/CartBadge";
 
 export function Navbar() {
   const { data: session, status } = useSession();
@@ -54,6 +55,7 @@ export function Navbar() {
 
           <div className="flex items-center gap-1 sm:gap-2">
             <CurrencySelector className="w-24 h-8 text-xs hidden sm:flex" />
+            <CartBadge />
             <Link href="/favorites">
               <Button variant="ghost" size="icon" className="relative group cursor-pointer">
                 <Heart className="h-6 w-6 group-hover:text-red-500 transition-colors" />

@@ -15,15 +15,20 @@ export default async function MessagesPage() {
 
   const meId = session.user.id;
 
-  const threads = await prisma.messageThread.findMany({
-    where: { OR: [{ buyerId: meId }, { sellerId: meId }] },
-    include: {
-      buyer: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
-      seller: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
-      messages: { orderBy: { createdAt: "asc" } },
-    },
-    orderBy: { lastMessageAt: "desc" },
-  });
+  const threads = await prisma.messageThread
+    .findMany({
+      where: { OR: [{ buyerId: meId }, { sellerId: meId }] },
+      include: {
+        buyer: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
+        seller: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+      orderBy: { lastMessageAt: "desc" },
+    })
+    .catch((error) => {
+      console.error("[MESSAGES PAGE] Prisma error:", error);
+      return [];
+    });
 
   return (
     <Suspense fallback={<div className="container mx-auto px-4 py-8 h-[calc(100vh-80px)] bg-muted/20 rounded-2xl animate-pulse" />}>

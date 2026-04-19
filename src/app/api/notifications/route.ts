@@ -4,42 +4,58 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(_req: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id)
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  }
 
-  const notifications = await prisma.notification.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-  });
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    });
 
-  const unreadCount = await prisma.notification.count({
-    where: { userId: session.user.id, isRead: false },
-  });
+    const unreadCount = await prisma.notification.count({
+      where: { userId: session.user.id, isRead: false },
+    });
 
-  return NextResponse.json({
-    notifications: notifications.map((n) => ({
-      id: n.id,
-      type: n.type,
-      title: n.title,
-      body: n.body,
-      link: n.link,
-      isRead: n.isRead,
-      createdAt: n.createdAt.toISOString(),
-    })),
-    unreadCount,
-  });
+    return NextResponse.json({
+      notifications: notifications.map((notification) => ({
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        link: notification.link,
+        isRead: notification.isRead,
+        createdAt: notification.createdAt.toISOString(),
+      })),
+      unreadCount,
+    });
+  } catch (error) {
+    console.error("[NOTIFICATIONS GET] Prisma error:", error);
+    return NextResponse.json({
+      notifications: [],
+      unreadCount: 0,
+      degraded: true,
+    });
+  }
 }
 
 export async function PATCH(_req: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id)
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  }
 
-  await prisma.notification.updateMany({
-    where: { userId: session.user.id, isRead: false },
-    data: { isRead: true },
-  });
+  try {
+    await prisma.notification.updateMany({
+      where: { userId: session.user.id, isRead: false },
+      data: { isRead: true },
+    });
+  } catch (error) {
+    console.error("[NOTIFICATIONS PATCH] Prisma error:", error);
+    return NextResponse.json({ success: false, degraded: true });
+  }
 
   return NextResponse.json({ success: true });
 }

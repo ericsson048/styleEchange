@@ -30,6 +30,7 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.role = (user as any).role;
         token.username = (user as any).username;
+        token.isBanned = (user as any).isBanned ?? false;
       }
       return token;
     },
@@ -38,6 +39,7 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         (session.user as any).role = token.role;
         (session.user as any).username = token.username;
+        (session.user as any).isBanned = token.isBanned;
       }
       return session;
     },

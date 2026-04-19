@@ -19,10 +19,23 @@ export default async function AdminStatsPage() {
   });
 
   // Produits par catégorie
-  const productsByCategory = await prisma.product.groupBy({
-    by: ["category"],
-    _count: { id: true },
+  const products = await prisma.product.findMany({
+    select: {
+      categoryLegacy: true,
+      category: { select: { name: true } },
+    },
   });
+  const productsByCategoryMap = new Map<string, number>();
+
+  for (const product of products) {
+    const category = product.category?.name ?? product.categoryLegacy ?? "Autre";
+    productsByCategoryMap.set(category, (productsByCategoryMap.get(category) ?? 0) + 1);
+  }
+
+  const productsByCategory = Array.from(productsByCategoryMap.entries()).map(([category, count]) => ({
+    category,
+    count,
+  }));
 
   // Commandes par statut
   const ordersByStatus = await prisma.order.groupBy({
@@ -43,10 +56,7 @@ export default async function AdminStatsPage() {
           status: o.status,
         }))}
         users={users.map((u) => ({ createdAt: u.createdAt.toISOString() }))}
-        productsByCategory={productsByCategory.map((p) => ({
-          category: p.category ?? "Autre",
-          count: p._count.id,
-        }))}
+        productsByCategory={productsByCategory}
         ordersByStatus={ordersByStatus.map((o) => ({
           status: o.status,
           count: o._count.id,

@@ -1,0 +1,81 @@
+# Diagrammes de Séquence — StyleÉchange
+
+## 1. Inscription d'un utilisateur
+
+```
+Client          Frontend         /api/auth/register    Database
+  │                │                     │                 │
+  │──[POST form]──►│                     │                 │
+  │                │──[POST /register]──►│                 │
+  │                │                     │──[findFirst]───►│
+  │                │                     │◄──[null]────────│
+  │                │                     │──[bcrypt.hash]  │
+  │                │                     │──[create user]─►│
+  │                │                     │◄──[user]────────│
+  │                │◄──[201 success]─────│                 │
+  │◄──[redirect login]─│                 │                 │
+```
+
+## 2. Ajout au panier et commande
+
+```
+Client          Frontend         /api/cart/items    /api/checkout    Stripe
+  │                │                   │                 │              │
+  │──[Ajouter]────►│                   │                 │              │
+  │                │──[POST /items]────►│                 │              │
+  │                │                   │──[check product]│              │
+  │                │                   │──[upsert cart]  │              │
+  │                │◄──[200 OK]────────│                 │              │
+  │──[Commander]──►│                   │                 │              │
+  │                │──[POST /checkout]─────────────────►│              │
+  │                │                   │                 │──[create order]
+  │                │                   │                 │──[stripe.sessions.create]──►│
+  │                │                   │                 │◄──[session.url]─────────────│
+  │                │◄──[{url}]─────────────────────────│              │
+  │◄──[redirect Stripe]─│              │                 │              │
+  │                │                   │                 │              │
+  │──[Paiement 3DS]────────────────────────────────────────────────────►│
+  │◄──[Confirmation]───────────────────────────────────────────────────│
+  │                │                   │                 │              │
+  │                │         [webhook checkout.session.completed]       │
+  │                │                   │                 │──[update order PAID]
+  │                │                   │                 │──[create SellerPayout]
+  │                │                   │                 │──[notify seller]
+```
+
+## 3. Paiement avec 3D Secure
+
+```
+Client          Stripe Checkout      Banque émettrice    Webhook
+  │                   │                     │                │
+  │──[Payer]─────────►│                     │                │
+  │                   │──[3DS challenge]────►│                │
+  │                   │                     │──[auth user]   │
+  │                   │◄──[auth result]─────│                │
+  │                   │──[process payment]  │                │
+  │◄──[redirect success]─│                  │                │
+  │                   │                     │                │
+  │                   │──[checkout.session.completed]───────►│
+  │                   │                     │                │──[update DB]
+  │                   │                     │                │──[notify vendeur]
+  │                   │                     │                │──[create payout]
+
+NOTE: Stripe gère automatiquement le 3D Secure (SCA) selon les règles
+de la banque émettrice. Le champ `threeDSecure` est enregistré dans Order.
+```
+
+## 4. Traitement d'un signalement
+
+```
+Admin           /admin/reports    /api/admin/products/[id]/toggle    Database
+  │                   │                        │                         │
+  │──[Voir signalements]─►│                    │                         │
+  │                   │──[GET reports]─────────────────────────────────►│
+  │◄──[liste]─────────│                        │                         │
+  │──[Désactiver produit]─►│                   │                         │
+  │                   │──[PATCH /toggle]───────►│                         │
+  │                   │                        │──[update isActive=false]►│
+  │                   │                        │◄──[ok]──────────────────│
+  │                   │──[PATCH report status]─────────────────────────►│
+  │◄──[confirmé]──────│                        │                         │
+```
